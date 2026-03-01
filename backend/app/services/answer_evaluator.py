@@ -1,4 +1,4 @@
-from app.services.claude_service import claude_service
+from app.services.gemini_service import gemini_service
 from app.models.prompts import ANSWER_EVALUATION_PROMPT, FOLLOW_UP_PROMPT, OVERALL_EVALUATION_PROMPT
 from app.models.schemas import (
     AnswerEntry,
@@ -27,7 +27,7 @@ class AnswerEvaluator:
             question_type=question_type,
             user_answer=user_answer,
         )
-        return await claude_service.generate_json(prompt)
+        return await gemini_service.generate_json(prompt)
 
     async def get_follow_up(
         self, question_text: str, user_answer: str
@@ -37,7 +37,7 @@ class AnswerEvaluator:
             question_text=question_text,
             user_answer=user_answer,
         )
-        result = await claude_service.generate_json(prompt)
+        result = await gemini_service.generate_json(prompt)
         return FollowUpResponse(
             follow_up_question=result.get("follow_up_question"),
             should_move_on=result.get("should_move_on", True),
@@ -103,7 +103,7 @@ class AnswerEvaluator:
             scores_summary=scores_summary,
             average_score=overall_score,
         )
-        summary_data = await claude_service.generate_json(summary_prompt)
+        summary_data = await gemini_service.generate_json(summary_prompt)
 
         summary = EvaluationSummary(
             strengths=summary_data.get("strengths", []),

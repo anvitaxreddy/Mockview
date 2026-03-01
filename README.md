@@ -4,8 +4,8 @@ An AI-powered mock interview app that generates tailored questions based on your
 
 ## Tech Stack
 - **Frontend**: React 18, Vite, Tailwind CSS, Framer Motion
-- **Backend**: FastAPI, Anthropic Claude API, OpenAI Whisper
-- **Voice**: Web Speech API (TTS), MediaRecorder API (recording), Whisper (STT)
+- **Backend**: FastAPI, Google Gemini API (free tier)
+- **Voice**: Web Speech API (TTS + STT — both free, browser-native)
 
 ## Quick Start
 
@@ -18,7 +18,7 @@ source venv/bin/activate        # macOS/Linux
 
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env with your API keys
+# Edit .env with your Gemini API key
 ```
 
 ### 2. Frontend Setup
@@ -27,11 +27,15 @@ cd frontend
 npm install
 ```
 
-### 3. Add API Keys
+### 3. Get Your FREE Gemini API Key
+1. Go to https://aistudio.google.com/apikey
+2. Sign in with your Google account
+3. Click "Create API Key" → choose "Create in new project"
+4. Copy the key
+
 Edit `backend/.env`:
 ```
-ANTHROPIC_API_KEY=sk-ant-your-key-here
-OPENAI_API_KEY=sk-your-key-here
+GEMINI_API_KEY=your-key-here
 ```
 
 ### 4. Run

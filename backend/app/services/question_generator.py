@@ -1,4 +1,4 @@
-from app.services.claude_service import claude_service
+from app.services.gemini_service import gemini_service
 from app.models.prompts import QUESTION_GENERATION_PROMPT
 from app.models.schemas import InterviewQuestion, QuestionsResponse
 
@@ -23,7 +23,7 @@ class QuestionGenerator:
             num_questions=num_questions,
         )
 
-        raw_questions = await claude_service.generate_json(prompt)
+        raw_questions = await gemini_service.generate_json(prompt)
 
         questions = []
         for q in raw_questions:

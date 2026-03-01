@@ -3,8 +3,7 @@ from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    anthropic_api_key: str = ""
-    openai_api_key: str = ""
+    gemini_api_key: str = ""
     debug: bool = True
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 

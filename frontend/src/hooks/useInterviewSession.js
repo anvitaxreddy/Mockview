@@ -1,45 +1,31 @@
 import { useCallback, useState } from "react";
 import { useInterview } from "../context/InterviewContext";
-import { transcribeAudio, getFollowUp, evaluateInterview } from "../services/api";
+import { getFollowUp, evaluateInterview } from "../services/api";
 
 export function useInterviewSession() {
   const { state, dispatch } = useInterview();
-  const [isTranscribing, setIsTranscribing] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [currentTranscript, setCurrentTranscript] = useState("");
 
-  const handleAnswerSubmit = useCallback(
-    async (audioBlob) => {
+  // Save answer directly from browser speech recognition (no backend call!)
+  const saveAnswer = useCallback(
+    (transcriptText) => {
       const question = state.questions[state.currentQuestionIndex];
       if (!question) return;
 
-      setIsTranscribing(true);
+      setCurrentTranscript(transcriptText);
 
-      try {
-        // Transcribe the audio
-        const transcription = await transcribeAudio(audioBlob);
-        const answerText = transcription.transcription;
-        setCurrentTranscript(answerText);
+      dispatch({
+        type: "SAVE_ANSWER",
+        payload: {
+          questionId: question.id,
+          questionText: question.question,
+          questionType: question.type,
+          userAnswer: transcriptText,
+        },
+      });
 
-        // Save the answer
-        dispatch({
-          type: "SAVE_ANSWER",
-          payload: {
-            questionId: question.id,
-            questionText: question.question,
-            questionType: question.type,
-            userAnswer: answerText,
-            audioBlob,
-          },
-        });
-
-        setIsTranscribing(false);
-        return answerText;
-      } catch (err) {
-        console.error("Transcription error:", err);
-        setIsTranscribing(false);
-        return null;
-      }
+      return transcriptText;
     },
     [state.questions, state.currentQuestionIndex, dispatch]
   );
@@ -91,10 +77,9 @@ export function useInterviewSession() {
     currentQuestion: state.questions[state.currentQuestionIndex],
     currentQuestionIndex: state.currentQuestionIndex,
     totalQuestions: state.questions.length,
-    isTranscribing,
     isEvaluating,
     currentTranscript,
-    handleAnswerSubmit,
+    saveAnswer,
     checkFollowUp,
     moveToNextQuestion,
     submitForEvaluation,

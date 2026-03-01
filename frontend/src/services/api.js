@@ -25,17 +25,6 @@ export async function getQuestions(sessionId, numQuestions = 10) {
   return res.data;
 }
 
-// ─── Speech ─────────────────────────────────
-
-export async function transcribeAudio(audioBlob) {
-  const formData = new FormData();
-  formData.append("audio", audioBlob, "recording.webm");
-  const res = await api.post("/api/speech/transcribe", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data;
-}
-
 // ─── Follow-up ──────────────────────────────
 
 export async function getFollowUp(sessionId, questionId, questionText, userAnswer) {

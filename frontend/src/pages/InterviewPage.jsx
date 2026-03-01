@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Mic,
-  MicOff,
   Square,
   SkipForward,
   Loader2,
@@ -20,22 +19,29 @@ import { useInterviewSession } from "../hooks/useInterviewSession";
 export default function InterviewPage() {
   const navigate = useNavigate();
   const { state, dispatch } = useInterview();
-  const { isRecording, audioBlob, duration, error: recError, startRecording, stopRecording, resetRecording } = useVoiceRecorder();
+  const {
+    isRecording,
+    transcript: voiceTranscript,
+    interimTranscript,
+    duration,
+    error: recError,
+    startRecording,
+    stopRecording,
+    resetRecording,
+  } = useVoiceRecorder();
   const { isSpeaking, speak, stop: stopSpeaking } = useSpeechSynthesis();
   const {
     currentQuestion,
     currentQuestionIndex,
     totalQuestions,
-    isTranscribing,
     currentTranscript,
-    handleAnswerSubmit,
+    saveAnswer,
     moveToNextQuestion,
     submitForEvaluation,
     isEvaluating,
   } = useInterviewSession();
 
   const [phase, setPhase] = useState("intro"); // intro | asking | listening | processing | transition
-  const [transcript, setTranscript] = useState("");
   const [interviewStarted, setInterviewStarted] = useState(false);
 
   // Redirect if no questions
@@ -53,7 +59,6 @@ export default function InterviewPage() {
     const intro = `Hello! Welcome to your mock interview for the ${state.role} position. I'll be asking you ${totalQuestions} questions today. Take your time with each answer, and try to be as specific as possible. Let's begin.`;
 
     speak(intro, () => {
-      // After intro, ask first question
       setPhase("asking");
       if (state.questions[0]) {
         speak(state.questions[0].question, () => {
@@ -63,7 +68,7 @@ export default function InterviewPage() {
     });
   }, [state.role, totalQuestions, state.questions, speak, dispatch]);
 
-  // When moving to next question, speak it
+  // When transitioning to next question, speak it
   useEffect(() => {
     if (phase === "transition" && currentQuestion) {
       const transitionPhrases = [
@@ -82,28 +87,6 @@ export default function InterviewPage() {
     }
   }, [phase, currentQuestion, currentQuestionIndex, speak]);
 
-  // Handle recording complete
-  useEffect(() => {
-    if (audioBlob && !isRecording && phase === "processing") {
-      (async () => {
-        const answerText = await handleAnswerSubmit(audioBlob);
-        if (answerText) {
-          setTranscript(answerText);
-          // Check if last question
-          if (currentQuestionIndex >= totalQuestions - 1) {
-            speak("That was the last question. Thank you for completing this interview. Let me evaluate your responses now.", () => {
-              handleFinishInterview();
-            });
-          } else {
-            moveToNextQuestion();
-            setPhase("transition");
-            resetRecording();
-          }
-        }
-      })();
-    }
-  }, [audioBlob, isRecording, phase]);
-
   const handleStartRecording = () => {
     stopSpeaking();
     setPhase("listening");
@@ -111,16 +94,35 @@ export default function InterviewPage() {
   };
 
   const handleStopRecording = () => {
-    stopRecording();
+    const finalText = stopRecording(); // Gets transcript from browser STT
     setPhase("processing");
+
+    // Small delay to let final transcript settle
+    setTimeout(() => {
+      const answerText = finalText || voiceTranscript || "[No speech detected]";
+      saveAnswer(answerText);
+
+      // Check if last question
+      if (currentQuestionIndex >= totalQuestions - 1) {
+        speak(
+          "That was the last question. Thank you for completing this interview. Let me evaluate your responses now.",
+          () => {
+            handleFinishInterview();
+          }
+        );
+      } else {
+        moveToNextQuestion();
+        resetRecording();
+        setPhase("transition");
+      }
+    }, 500);
   };
 
   const handleSkipQuestion = () => {
     stopSpeaking();
-    stopRecording();
+    if (isRecording) stopRecording();
     resetRecording();
 
-    // Save empty answer
     dispatch({
       type: "SAVE_ANSWER",
       payload: {
@@ -152,15 +154,27 @@ export default function InterviewPage() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  // Build the live display text
+  const liveText =
+    isRecording
+      ? (voiceTranscript ? voiceTranscript + " " : "") + (interimTranscript || "")
+      : currentTranscript || voiceTranscript;
+
   if (!state.questions || state.questions.length === 0) return null;
 
   return (
     <div className="min-h-screen bg-surface-dark relative overflow-hidden flex flex-col">
       {/* Ambient background */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className={`absolute top-[20%] left-[30%] w-[400px] h-[400px] rounded-full blur-[120px] transition-colors duration-1000 ${
-          isRecording ? "bg-danger/10" : isSpeaking ? "bg-primary/10" : "bg-primary/5"
-        }`} />
+        <div
+          className={`absolute top-[20%] left-[30%] w-[400px] h-[400px] rounded-full blur-[120px] transition-colors duration-1000 ${
+            isRecording
+              ? "bg-danger/10"
+              : isSpeaking
+              ? "bg-primary/10"
+              : "bg-primary/5"
+          }`}
+        />
       </div>
 
       {/* Top bar */}
@@ -191,7 +205,7 @@ export default function InterviewPage() {
 
       {/* Main interview area */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 relative z-10">
-        {/* Loading overlay for evaluation */}
+        {/* Evaluation loading overlay */}
         <AnimatePresence>
           {isEvaluating && (
             <motion.div
@@ -202,13 +216,15 @@ export default function InterviewPage() {
               <div className="text-center">
                 <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
                 <p className="text-lg font-medium">Evaluating your interview...</p>
-                <p className="text-sm text-text-muted mt-2">Our AI is reviewing each answer carefully</p>
+                <p className="text-sm text-text-muted mt-2">
+                  AI is reviewing each answer carefully
+                </p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Pre-interview */}
+        {/* Pre-interview screen */}
         {!interviewStarted && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
@@ -222,10 +238,12 @@ export default function InterviewPage() {
               Ready for your interview?
             </h1>
             <p className="text-text-secondary mb-3">
-              <strong className="text-text-primary">{state.role}</strong> • {totalQuestions} questions • ~{totalQuestions * 3} min
+              <strong className="text-text-primary">{state.role}</strong> •{" "}
+              {totalQuestions} questions • ~{totalQuestions * 3} min
             </p>
             <p className="text-sm text-text-muted mb-8">
-              Make sure your microphone is working. The AI interviewer will speak each question aloud, then you respond by voice.
+              Make sure your microphone is working. The AI interviewer will
+              speak each question aloud, then you respond by voice.
             </p>
             <button
               onClick={startInterview}
@@ -239,46 +257,51 @@ export default function InterviewPage() {
         {/* Active interview */}
         {interviewStarted && (
           <div className="w-full max-w-2xl">
-            {/* AI Avatar area */}
+            {/* AI Avatar */}
             <div className="flex flex-col items-center mb-10">
-              {/* Avatar with breathing animation */}
               <motion.div
                 animate={{
                   scale: isSpeaking ? [1, 1.05, 1] : 1,
                   boxShadow: isSpeaking
-                    ? ["0 0 0px rgba(108,60,225,0.3)", "0 0 40px rgba(108,60,225,0.5)", "0 0 0px rgba(108,60,225,0.3)"]
+                    ? [
+                        "0 0 0px rgba(108,60,225,0.3)",
+                        "0 0 40px rgba(108,60,225,0.5)",
+                        "0 0 0px rgba(108,60,225,0.3)",
+                      ]
                     : "0 0 0px rgba(108,60,225,0)",
                 }}
-                transition={{ duration: 1.5, repeat: isSpeaking ? Infinity : 0 }}
+                transition={{
+                  duration: 1.5,
+                  repeat: isSpeaking ? Infinity : 0,
+                }}
                 className="w-20 h-20 rounded-2xl bg-gradient-primary flex items-center justify-center mb-5"
               >
                 {isSpeaking ? (
                   <Volume2 className="w-9 h-9 text-white" />
-                ) : isTranscribing ? (
-                  <Loader2 className="w-9 h-9 text-white animate-spin" />
                 ) : (
                   <Target className="w-9 h-9 text-white" />
                 )}
               </motion.div>
 
-              {/* Status label */}
               <span className="text-sm text-text-muted mb-2">
                 {isSpeaking
                   ? "AI Interviewer is speaking..."
                   : isRecording
                   ? "Listening to your answer..."
-                  : isTranscribing
-                  ? "Transcribing..."
+                  : phase === "processing"
+                  ? "Processing..."
                   : "Waiting for your response"}
               </span>
 
-              {/* Waveform visualization */}
+              {/* Waveform */}
               {(isSpeaking || isRecording) && (
                 <div className="flex items-end gap-1 h-8 mt-2">
                   {Array.from({ length: 20 }).map((_, i) => (
                     <div
                       key={i}
-                      className={`w-1 rounded-full ${isRecording ? "bg-danger" : "bg-primary-light"} waveform-bar`}
+                      className={`w-1 rounded-full ${
+                        isRecording ? "bg-danger" : "bg-primary-light"
+                      } waveform-bar`}
                       style={{
                         animationDelay: `${i * 0.05}s`,
                         animationDuration: `${0.8 + Math.random() * 0.8}s`,
@@ -314,12 +337,19 @@ export default function InterviewPage() {
               )}
             </AnimatePresence>
 
-            {/* Transcript display */}
-            {(transcript || currentTranscript) && (
+            {/* Live transcript */}
+            {liveText && (
               <div className="glass-light rounded-xl p-4 mb-8 max-h-32 overflow-y-auto">
-                <span className="text-xs text-text-muted block mb-1">Your answer:</span>
+                <span className="text-xs text-text-muted block mb-1">
+                  {isRecording ? "You're saying:" : "Your answer:"}
+                </span>
                 <p className="text-sm text-text-secondary">
-                  {currentTranscript || transcript}
+                  {liveText}
+                  {isRecording && interimTranscript && (
+                    <span className="text-text-muted opacity-60">
+                      {" "}{interimTranscript}
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -333,14 +363,16 @@ export default function InterviewPage() {
 
             {/* Controls */}
             <div className="flex items-center justify-center gap-4">
-              {!isRecording && !isSpeaking && !isTranscribing && phase === "listening" && (
-                <button
-                  onClick={handleStartRecording}
-                  className="w-16 h-16 rounded-2xl bg-danger flex items-center justify-center hover:bg-danger/80 transition-all hover:shadow-[0_0_30px_rgba(255,107,107,0.3)]"
-                >
-                  <Mic className="w-7 h-7 text-white" />
-                </button>
-              )}
+              {!isRecording &&
+                !isSpeaking &&
+                phase === "listening" && (
+                  <button
+                    onClick={handleStartRecording}
+                    className="w-16 h-16 rounded-2xl bg-danger flex items-center justify-center hover:bg-danger/80 transition-all hover:shadow-[0_0_30px_rgba(255,107,107,0.3)]"
+                  >
+                    <Mic className="w-7 h-7 text-white" />
+                  </button>
+                )}
 
               {isRecording && (
                 <button
@@ -351,7 +383,7 @@ export default function InterviewPage() {
                 </button>
               )}
 
-              {!isSpeaking && !isRecording && !isTranscribing && (
+              {!isSpeaking && !isRecording && phase !== "processing" && (
                 <button
                   onClick={handleSkipQuestion}
                   className="flex items-center gap-2 px-5 py-3 rounded-xl bg-surface-light text-text-secondary text-sm hover:text-text-primary transition-colors"
@@ -372,7 +404,7 @@ export default function InterviewPage() {
         )}
       </div>
 
-      {/* Progress bar at bottom */}
+      {/* Progress bar */}
       {interviewStarted && (
         <div className="relative z-10 h-1 bg-surface-light">
           <motion.div
