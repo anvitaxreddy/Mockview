@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Mic, Brain, BarChart3, ArrowRight, Sparkles, Target, MessageSquare } from "lucide-react";
+import { Mic, Brain, BarChart3, ArrowRight, Sparkles, Target, MessageSquare, History, LogOut } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -13,6 +14,7 @@ const fadeUp = {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-surface-dark relative overflow-hidden">
@@ -37,14 +39,43 @@ export default function LandingPage() {
           </span>
         </motion.div>
 
-        <motion.button
+        <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
-          onClick={() => navigate("/setup")}
-          className="px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary-light text-sm font-medium hover:bg-primary/20 transition-all"
+          className="flex items-center gap-3"
         >
-          Start Interview
-        </motion.button>
+          {user ? (
+            <>
+              <button
+                onClick={() => navigate("/history")}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-text-secondary text-sm hover:text-text-primary transition-colors"
+              >
+                <History className="w-4 h-4" />
+                My Interviews
+              </button>
+              <button
+                onClick={() => navigate("/setup")}
+                className="px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary-light text-sm font-medium hover:bg-primary/20 transition-all"
+              >
+                Start Interview
+              </button>
+              <button
+                onClick={async () => { await signOut(); }}
+                className="flex items-center gap-1.5 text-xs text-text-muted hover:text-text-secondary transition-colors"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sign out
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => navigate("/auth")}
+              className="px-5 py-2.5 rounded-xl bg-primary/10 border border-primary/20 text-primary-light text-sm font-medium hover:bg-primary/20 transition-all"
+            >
+              Log In / Sign Up
+            </button>
+          )}
+        </motion.div>
       </nav>
 
       {/* Hero */}

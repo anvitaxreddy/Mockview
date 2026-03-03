@@ -1,10 +1,20 @@
 import axios from "axios";
+import { supabase } from "../lib/supabase";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
 const api = axios.create({
   baseURL: API_BASE,
-  timeout: 120000, // 2 min timeout for Claude API calls
+  timeout: 120000,
+});
+
+// Attach Supabase JWT to every request
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
+  }
+  return config;
 });
 
 // ─── Setup ──────────────────────────────────
@@ -18,7 +28,7 @@ export async function setupInterview(formData) {
 
 // ─── Questions ──────────────────────────────
 
-export async function getQuestions(sessionId, numQuestions = 10) {
+export async function getQuestions(sessionId, numQuestions = 6) {
   const res = await api.get(`/api/interview/${sessionId}/questions`, {
     params: { num_questions: numQuestions },
   });
@@ -50,6 +60,13 @@ export async function evaluateInterview(sessionId, role, jobDescription, answers
       user_answer: a.userAnswer,
     })),
   });
+  return res.data;
+}
+
+// ─── History ────────────────────────────────
+
+export async function getHistory() {
+  const res = await api.get("/api/history");
   return res.data;
 }
 
