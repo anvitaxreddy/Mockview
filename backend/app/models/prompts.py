@@ -14,10 +14,10 @@ Generate exactly {num_questions} interview questions that:
 6. Vary in difficulty (easy, medium, hard)
 
 Question type distribution:
-- 2 behavioral questions (using STAR method scenarios)
-- 2 situational questions (hypothetical work scenarios)
-- 3 technical questions (based on JD requirements + resume skills)
-- 2 role-specific questions (domain knowledge, culture fit)
+- 1 behavioral question (using STAR method scenarios)
+- 1 situational question (hypothetical work scenario)
+- 2 technical questions (based on JD requirements + resume skills)
+- 1 role-specific question (domain knowledge, culture fit)
 - 1 closing question (e.g., "What questions do you have for us?")
 
 IMPORTANT: Return ONLY valid JSON, no markdown, no explanation. Return an array of objects:
@@ -30,6 +30,47 @@ IMPORTANT: Return ONLY valid JSON, no markdown, no explanation. Return an array 
     "what_it_tests": "Brief description of what this question evaluates"
   }}
 ]
+"""
+
+BATCH_EVALUATION_PROMPT = """You are an expert interview evaluator providing detailed, constructive feedback.
+
+Context:
+- Role being interviewed for: {role}
+- Job Description: {job_description}
+
+Evaluate ALL of the following interview answers. Score each on 4 dimensions (0-25 each, total 0-100):
+
+1. Relevance (0-25): Does the answer directly address the question?
+2. Depth & Detail (0-25): STAR method, specific examples, thoroughness?
+3. Communication (0-25): Clear, well-structured, concise, confident?
+4. Technical Accuracy (0-25): Correct concepts? (For non-technical questions, default 18-22 if answered well)
+
+Scoring guidelines:
+- 22-25: Exceptional  |  18-21: Strong  |  13-17: Average  |  8-12: Below average  |  0-7: Poor
+
+Answers to evaluate:
+{answers_block}
+
+Then provide an overall summary across all answers.
+
+IMPORTANT: Return ONLY valid JSON with this exact structure:
+{{
+  "evaluations": [
+    {{
+      "question_id": "<id>",
+      "scores": {{"relevance": <int 0-25>, "depth": <int 0-25>, "communication": <int 0-25>, "technical_accuracy": <int 0-25>}},
+      "total_score": <int 0-100>,
+      "feedback": "2-3 sentences of specific, constructive feedback. Be encouraging but honest.",
+      "suggested_answer": "A strong example answer that would score 90+ (3-5 sentences).",
+      "key_missing_points": ["point1", "point2", "point3"]
+    }}
+  ],
+  "summary": {{
+    "strengths": ["3-4 specific strengths observed across answers"],
+    "improvements": ["3-4 specific areas for improvement with actionable advice"],
+    "overall_feedback": "A 3-4 sentence encouraging but honest summary. Mention the strongest area and most critical improvement."
+  }}
+}}
 """
 
 ANSWER_EVALUATION_PROMPT = """You are an expert interview evaluator providing detailed, constructive feedback.

@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import get_settings
-from app.routers import interview, questions, evaluation
+from app.routers import interview, questions, evaluation, history
 
 settings = get_settings()
 
@@ -24,6 +24,7 @@ app.add_middleware(
 app.include_router(interview.router)
 app.include_router(questions.router)
 app.include_router(evaluation.router)
+app.include_router(history.router)
 
 
 @app.get("/")

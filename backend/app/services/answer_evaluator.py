@@ -1,5 +1,5 @@
 from app.services.gemini_service import gemini_service
-from app.models.prompts import ANSWER_EVALUATION_PROMPT, FOLLOW_UP_PROMPT, OVERALL_EVALUATION_PROMPT
+from app.models.prompts import BATCH_EVALUATION_PROMPT, FOLLOW_UP_PROMPT
 from app.models.schemas import (
     AnswerEntry,
     EvaluateResponse,
@@ -11,24 +11,6 @@ from app.models.schemas import (
 
 
 class AnswerEvaluator:
-    async def evaluate_single_answer(
-        self,
-        role: str,
-        job_description: str,
-        question_text: str,
-        question_type: str,
-        user_answer: str,
-    ) -> dict:
-        """Evaluate a single answer using Claude."""
-        prompt = ANSWER_EVALUATION_PROMPT.format(
-            role=role,
-            job_description=job_description,
-            question_text=question_text,
-            question_type=question_type,
-            user_answer=user_answer,
-        )
-        return await gemini_service.generate_json(prompt)
-
     async def get_follow_up(
         self, question_text: str, user_answer: str
     ) -> FollowUpResponse:
@@ -50,19 +32,26 @@ class AnswerEvaluator:
         job_description: str,
         answers: list[AnswerEntry],
     ) -> EvaluateResponse:
-        """Evaluate all answers and produce a complete interview assessment."""
+        """Evaluate all answers in a single Gemini call to stay within rate limits."""
+
+        # Build the answers block for the batch prompt
+        answers_block = "\n\n".join(
+            f"Answer {i+1} (id={a.question_id}, type={a.question_type}):\n"
+            f"Question: {a.question_text}\n"
+            f"Candidate's answer: {a.user_answer}"
+            for i, a in enumerate(answers)
+        )
+
+        prompt = BATCH_EVALUATION_PROMPT.format(
+            role=role,
+            job_description=job_description,
+            answers_block=answers_block,
+        )
+
+        data = await gemini_service.generate_json(prompt)
 
         per_question_results = []
-
-        for answer in answers:
-            eval_data = await self.evaluate_single_answer(
-                role=role,
-                job_description=job_description,
-                question_text=answer.question_text,
-                question_type=answer.question_type,
-                user_answer=answer.user_answer,
-            )
-
+        for i, (answer, eval_data) in enumerate(zip(answers, data["evaluations"])):
             scores = eval_data["scores"]
             breakdown = ScoreBreakdown(
                 relevance=scores["relevance"],
@@ -70,7 +59,6 @@ class AnswerEvaluator:
                 communication=scores["communication"],
                 technical_accuracy=scores["technical_accuracy"],
             )
-
             per_question_results.append(
                 QuestionEvaluation(
                     question_id=answer.question_id,
@@ -84,27 +72,11 @@ class AnswerEvaluator:
                 )
             )
 
-        # Calculate overall score
-        if per_question_results:
-            overall_score = round(
-                sum(q.score for q in per_question_results) / len(per_question_results)
-            )
-        else:
-            overall_score = 0
+        overall_score = round(
+            sum(q.score for q in per_question_results) / len(per_question_results)
+        ) if per_question_results else 0
 
-        # Generate overall summary
-        scores_summary = "\n".join(
-            f"- Q{i+1} ({r.question_id}): {r.score}/100 — {r.feedback[:80]}..."
-            for i, r in enumerate(per_question_results)
-        )
-
-        summary_prompt = OVERALL_EVALUATION_PROMPT.format(
-            role=role,
-            scores_summary=scores_summary,
-            average_score=overall_score,
-        )
-        summary_data = await gemini_service.generate_json(summary_prompt)
-
+        summary_data = data.get("summary", {})
         summary = EvaluationSummary(
             strengths=summary_data.get("strengths", []),
             improvements=summary_data.get("improvements", []),

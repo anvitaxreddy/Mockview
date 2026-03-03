@@ -1,5 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from app.services.answer_evaluator import answer_evaluator
+from app.services.supabase_service import save_evaluation
+from app.middleware.auth import get_current_user
 from app.models.schemas import (
     EvaluateRequest,
     EvaluateResponse,
@@ -12,30 +14,45 @@ router = APIRouter(prefix="/api/interview", tags=["evaluation"])
 
 
 @router.post("/{session_id}/evaluate", response_model=EvaluateResponse)
-async def evaluate_interview(session_id: str, request: EvaluateRequest):
+async def evaluate_interview(
+    session_id: str,
+    request: EvaluateRequest,
+    user_id: str = Depends(get_current_user),
+):
     """Evaluate all answers and return scores + feedback."""
     sessions = get_session_store()
 
     if session_id not in sessions:
         raise HTTPException(status_code=404, detail="Session not found.")
 
-    session = sessions[session_id]
-
     try:
         result = await answer_evaluator.evaluate_full_interview(
             session_id=session_id,
-            role=session["role"],
-            job_description=session["job_description"],
+            role=request.role,
+            job_description=request.job_description,
             answers=request.answers,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Evaluation failed: {str(e)}")
 
+    # Persist evaluation to Supabase
+    save_evaluation(
+        session_id=session_id,
+        user_id=user_id,
+        overall_score=result.overall_score,
+        per_question=[q.model_dump() for q in result.per_question],
+        summary=result.summary.model_dump(),
+    )
+
     return result
 
 
 @router.post("/{session_id}/follow-up", response_model=FollowUpResponse)
-async def get_follow_up(session_id: str, request: FollowUpRequest):
+async def get_follow_up(
+    session_id: str,
+    request: FollowUpRequest,
+    user_id: str = Depends(get_current_user),
+):
     """Get a follow-up question based on the user's answer."""
     sessions = get_session_store()
 

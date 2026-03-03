@@ -4,6 +4,8 @@ from functools import lru_cache
 
 class Settings(BaseSettings):
     gemini_api_key: str = ""
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
     debug: bool = True
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
