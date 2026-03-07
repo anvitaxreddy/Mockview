@@ -12,16 +12,54 @@ import {
   CheckCircle2,
   Target,
   X,
+  Sliders,
+  Plus,
+  Minus,
+  Clock,
 } from "lucide-react";
 import { useInterview } from "../context/InterviewContext";
 import { setupInterview, getQuestions } from "../services/api";
+import { GLSLHills } from "../components/ui/glsl-hills";
+import { GradientButton } from "../components/ui/gradient-button";
 
 const steps = [
   { id: 1, label: "Role", icon: Briefcase },
   { id: 2, label: "Description", icon: FileText },
   { id: 3, label: "Qualifications", icon: Award },
   { id: 4, label: "Resume", icon: Upload },
+  { id: 5, label: "Customize", icon: Sliders },
 ];
+
+const DURATION_OPTIONS = [15, 30, 45, 60];
+
+const QUESTION_TYPES = [
+  { key: "intro", label: "Intro", description: "About yourself & background", min: 0, max: 3, color: "text-blue-400" },
+  { key: "technical", label: "Technical", description: "Skills & problem-solving", min: 0, max: 6, color: "text-purple-400" },
+  { key: "behavioral", label: "Behavioral", description: "Situations & past experiences", min: 0, max: 6, color: "text-emerald-400" },
+  { key: "experience", label: "Experience", description: "Role-specific background", min: 0, max: 6, color: "text-amber-400" },
+];
+
+function Counter({ value, min, max, onChange, color }) {
+  return (
+    <div className="flex items-center gap-3">
+      <button
+        onClick={() => onChange(Math.max(min, value - 1))}
+        disabled={value <= min}
+        className="w-8 h-8 rounded-lg bg-surface-light border border-white/5 flex items-center justify-center hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      >
+        <Minus className="w-3.5 h-3.5" />
+      </button>
+      <span className={`w-6 text-center font-mono text-lg font-semibold ${color}`}>{value}</span>
+      <button
+        onClick={() => onChange(Math.min(max, value + 1))}
+        disabled={value >= max}
+        className="w-8 h-8 rounded-lg bg-surface-light border border-white/5 flex items-center justify-center hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+      >
+        <Plus className="w-3.5 h-3.5" />
+      </button>
+    </div>
+  );
+}
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -37,6 +75,13 @@ export default function SetupPage() {
     jobDescription: "",
     qualifications: "",
     resumeFile: null,
+    questionConfig: {
+      intro: 1,
+      technical: 2,
+      behavioral: 2,
+      experience: 1,
+      duration: 30,
+    },
   });
 
   const update = (field, value) => {
@@ -44,12 +89,26 @@ export default function SetupPage() {
     setError(null);
   };
 
+  const updateQuestionConfig = (key, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      questionConfig: { ...prev.questionConfig, [key]: value },
+    }));
+  };
+
+  const totalQuestions =
+    formData.questionConfig.intro +
+    formData.questionConfig.technical +
+    formData.questionConfig.behavioral +
+    formData.questionConfig.experience;
+
   const canProceed = () => {
     switch (currentStep) {
       case 1: return formData.role.trim().length >= 2;
       case 2: return formData.jobDescription.trim().length >= 20;
       case 3: return formData.qualifications.trim().length >= 10;
       case 4: return formData.resumeFile !== null;
+      case 5: return totalQuestions >= 1;
       default: return false;
     }
   };
@@ -59,7 +118,6 @@ export default function SetupPage() {
     setError(null);
 
     try {
-      // Step 1: Setup interview & parse resume
       setLoadingMessage("Parsing your resume...");
       const fd = new FormData();
       fd.append("role", formData.role);
@@ -87,16 +145,18 @@ export default function SetupPage() {
         },
       });
 
-      // Step 2: Generate questions
       setLoadingMessage("AI is crafting your interview questions...");
-      const questionsResult = await getQuestions(setupResult.session_id);
+      const questionsResult = await getQuestions(
+        setupResult.session_id,
+        totalQuestions,
+        formData.questionConfig
+      );
 
       dispatch({
         type: "SET_QUESTIONS",
         payload: questionsResult.questions,
       });
 
-      // Navigate to interview
       navigate("/interview");
     } catch (err) {
       console.error("Setup error:", err);
@@ -109,7 +169,7 @@ export default function SetupPage() {
   };
 
   const handleNext = () => {
-    if (currentStep === 4) {
+    if (currentStep === 5) {
       handleSubmit();
     } else {
       setCurrentStep((s) => s + 1);
@@ -118,16 +178,17 @@ export default function SetupPage() {
 
   return (
     <div className="min-h-screen bg-surface-dark relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] rounded-full bg-primary/8 blur-[100px]" />
+      {/* GLSLHills background */}
+      <div className="absolute inset-0 pointer-events-none opacity-15">
+        <GLSLHills width="100%" height="100%" />
       </div>
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#0f0f1a]/50 via-transparent to-[#0f0f1a]/50" />
 
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-8 py-6 max-w-5xl mx-auto">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-3"
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
         >
           <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center">
             <Target className="w-4 h-4 text-white" />
@@ -160,7 +221,7 @@ export default function SetupPage() {
               </div>
               {i < steps.length - 1 && (
                 <div
-                  className={`w-12 h-0.5 mx-1 rounded-full transition-all ${
+                  className={`w-10 h-0.5 mx-1 rounded-full transition-all ${
                     currentStep > step.id ? "bg-accent/40" : "bg-surface-light"
                   }`}
                 />
@@ -243,7 +304,7 @@ export default function SetupPage() {
                   Required qualifications
                 </h2>
                 <p className="text-text-secondary mb-8">
-                  List the key qualifications, skills, and experience required. This helps us tailor technical questions.
+                  List the key qualifications, skills, and experience required.
                 </p>
                 <textarea
                   value={formData.qualifications}
@@ -304,15 +365,81 @@ export default function SetupPage() {
                       <Upload className="w-7 h-7 text-primary-light" />
                     </div>
                     <div className="text-center">
-                      <p className="text-text-primary font-medium">
-                        Click to upload PDF
-                      </p>
-                      <p className="text-sm text-text-muted mt-1">
-                        Max 10MB • PDF only
-                      </p>
+                      <p className="text-text-primary font-medium">Click to upload PDF</p>
+                      <p className="text-sm text-text-muted mt-1">Max 10MB • PDF only</p>
                     </div>
                   </button>
                 )}
+              </div>
+            )}
+
+            {currentStep === 5 && (
+              <div>
+                <h2 className="font-display text-3xl font-semibold mb-2">
+                  Customize your interview
+                </h2>
+                <p className="text-text-secondary mb-8">
+                  Choose how many questions of each type and your preferred session length.
+                </p>
+
+                {/* Question type counters */}
+                <div className="space-y-3 mb-8">
+                  {QUESTION_TYPES.map((type) => (
+                    <div
+                      key={type.key}
+                      className="glass rounded-xl px-5 py-4 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className={`font-medium text-sm ${type.color}`}>{type.label}</p>
+                        <p className="text-xs text-text-muted mt-0.5">{type.description}</p>
+                      </div>
+                      <Counter
+                        value={formData.questionConfig[type.key]}
+                        min={type.min}
+                        max={type.max}
+                        onChange={(v) => updateQuestionConfig(type.key, v)}
+                        color={type.color}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                {/* Duration picker */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="w-4 h-4 text-text-muted" />
+                    <p className="text-sm font-medium text-text-secondary">Session duration</p>
+                  </div>
+                  <div className="flex gap-3">
+                    {DURATION_OPTIONS.map((d) => (
+                      <button
+                        key={d}
+                        onClick={() => updateQuestionConfig("duration", d)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          formData.questionConfig.duration === d
+                            ? "bg-primary text-white"
+                            : "bg-surface-light text-text-secondary hover:bg-white/10"
+                        }`}
+                      >
+                        {d}m
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="glass-light rounded-xl px-5 py-4 flex items-center justify-between">
+                  <span className="text-sm text-text-secondary">Total questions</span>
+                  <span className="font-mono text-lg font-semibold">
+                    {totalQuestions === 0 ? (
+                      <span className="text-danger text-sm">Add at least 1</span>
+                    ) : (
+                      <span className="text-accent">
+                        {totalQuestions} questions · {formData.questionConfig.duration} min
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
             )}
           </motion.div>
@@ -336,14 +463,14 @@ export default function SetupPage() {
             Back
           </button>
 
-          <button
+          <GradientButton
             onClick={handleNext}
             disabled={!canProceed() || isLoading}
-            className="flex items-center gap-2 px-8 py-3 rounded-xl bg-gradient-primary text-white font-medium hover:shadow-[0_0_30px_rgba(108,60,225,0.3)] transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
+            className="flex items-center gap-2 min-w-0 px-7 py-3 text-sm rounded-xl"
           >
-            {currentStep === 4 ? "Generate Questions" : "Continue"}
+            {currentStep === 5 ? "Generate Questions" : "Continue"}
             <ArrowRight className="w-4 h-4" />
-          </button>
+          </GradientButton>
         </div>
       </main>
     </div>

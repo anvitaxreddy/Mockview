@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Target,
-  ChevronRight,
   ChevronDown,
   Trophy,
   Calendar,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getHistory } from "../services/api";
+import { GLSLHills } from "../components/ui/glsl-hills";
 
 function ScoreRing({ score, size = 64 }) {
   const r = (size - 8) / 2;
@@ -179,15 +179,24 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-dark">
+    <div className="min-h-screen bg-surface-dark relative overflow-hidden">
+      {/* GLSLHills background */}
+      <div className="absolute inset-0 pointer-events-none opacity-15">
+        <GLSLHills width="100%" height="100%" />
+      </div>
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#0f0f1a]/40 to-transparent" />
+
       {/* Header */}
-      <div className="border-b border-white/5 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="relative z-10 border-b border-white/5 px-6 py-4 flex items-center justify-between">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
             <Target className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display text-sm font-medium">Mockview</span>
-        </div>
+          <span className="font-display text-sm font-medium">Mock<span className="text-primary-light">view</span></span>
+        </button>
         <div className="flex items-center gap-3">
           <span className="text-xs text-text-muted">{user?.email}</span>
           <button
@@ -200,7 +209,7 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-6 py-10">
+      <div className="relative z-10 max-w-2xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="font-display text-2xl font-semibold">My Interviews</h1>

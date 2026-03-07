@@ -28,10 +28,16 @@ export async function setupInterview(formData) {
 
 // ─── Questions ──────────────────────────────
 
-export async function getQuestions(sessionId, numQuestions = 6) {
-  const res = await api.get(`/api/interview/${sessionId}/questions`, {
-    params: { num_questions: numQuestions },
-  });
+export async function getQuestions(sessionId, numQuestions = 6, questionTypes = null) {
+  const params = { num_questions: numQuestions };
+  if (questionTypes) {
+    params.intro_questions = questionTypes.intro;
+    params.technical_questions = questionTypes.technical;
+    params.behavioral_questions = questionTypes.behavioral;
+    params.experience_questions = questionTypes.experience;
+    params.duration_minutes = questionTypes.duration;
+  }
+  const res = await api.get(`/api/interview/${sessionId}/questions`, { params });
   return res.data;
 }
 

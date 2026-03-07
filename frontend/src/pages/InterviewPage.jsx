@@ -179,12 +179,15 @@ export default function InterviewPage() {
 
       {/* Top bar */}
       <div className="relative z-10 flex items-center justify-between px-8 py-4 border-b border-white/5">
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
             <Target className="w-4 h-4 text-white" />
           </div>
-          <span className="font-display text-sm font-medium">Mockview</span>
-        </div>
+          <span className="font-display text-sm font-medium">Mock<span className="text-primary-light">view</span></span>
+        </button>
 
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2 text-sm text-text-secondary">

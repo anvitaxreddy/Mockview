@@ -2,6 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Mic, Brain, BarChart3, ArrowRight, Sparkles, Target, MessageSquare, History, LogOut } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { ShaderAnimation } from "../components/ui/shader-animation";
+import { GradientButton } from "../components/ui/gradient-button";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },
@@ -20,8 +22,10 @@ export default function LandingPage() {
     <div className="min-h-screen bg-surface-dark relative overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[-20%] left-[-10%] w-[600px] h-[600px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[500px] h-[500px] rounded-full bg-accent/8 blur-[100px]" />
+        <div className="absolute inset-0 opacity-25">
+          <ShaderAnimation />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0f0f1a]" />
       </div>
 
       {/* Nav */}
@@ -122,13 +126,13 @@ export default function LandingPage() {
             custom={3}
             className="flex items-center justify-center gap-4"
           >
-            <button
+            <GradientButton
               onClick={() => navigate("/setup")}
-              className="group px-8 py-4 rounded-2xl bg-gradient-primary text-white font-semibold text-lg flex items-center gap-3 hover:shadow-[0_0_40px_rgba(108,60,225,0.4)] transition-all duration-300"
+              className="group flex items-center gap-3 text-lg"
             >
               Start Mock Interview
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </button>
+            </GradientButton>
           </motion.div>
         </div>
       </section>
@@ -276,14 +280,14 @@ export default function LandingPage() {
           <p className="text-text-secondary mb-8">
             Your next interview could be the one. Make sure you're ready.
           </p>
-          <button
+          <GradientButton
             onClick={() => navigate("/setup")}
-            className="group px-10 py-4 rounded-2xl bg-gradient-primary text-white font-semibold text-lg inline-flex items-center gap-3 hover:shadow-[0_0_40px_rgba(108,60,225,0.4)] transition-all duration-300"
+            className="group flex items-center gap-3 text-lg"
           >
             <MessageSquare className="w-5 h-5" />
             Start Now
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
+          </GradientButton>
         </motion.div>
       </section>
 

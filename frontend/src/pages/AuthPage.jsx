@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { Target, Mail, Lock, Chrome } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../context/AuthContext";
+import { GLSLHills } from "../components/ui/glsl-hills";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -53,11 +54,12 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen bg-surface-dark flex items-center justify-center px-4">
-      {/* Ambient background */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-[20%] left-[35%] w-[500px] h-[500px] rounded-full bg-primary/8 blur-[120px]" />
+    <div className="min-h-screen bg-surface-dark flex items-center justify-center px-4 relative overflow-hidden">
+      {/* GLSLHills background */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        <GLSLHills width="100%" height="100%" />
       </div>
+      <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-[#0f0f1a]/60 via-transparent to-[#0f0f1a]/60" />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -65,12 +67,15 @@ export default function AuthPage() {
         className="relative w-full max-w-md"
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 justify-center mb-10">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 justify-center mb-10 mx-auto"
+        >
           <div className="w-10 h-10 rounded-xl bg-gradient-primary flex items-center justify-center">
             <Target className="w-5 h-5 text-white" />
           </div>
-          <span className="font-display text-xl font-semibold">Mockview</span>
-        </div>
+          <span className="font-display text-xl font-semibold">Mock<span className="text-primary-light">view</span></span>
+        </button>
 
         <div className="glass rounded-2xl p-8">
           {/* Tabs */}

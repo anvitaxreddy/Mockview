@@ -235,14 +235,17 @@ export default function ResultsPage() {
 
       {/* Nav */}
       <nav className="relative z-10 flex items-center justify-between px-8 py-6 max-w-6xl mx-auto">
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => navigate("/")}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <div className="w-9 h-9 rounded-xl bg-gradient-primary flex items-center justify-center">
             <Target className="w-4 h-4 text-white" />
           </div>
           <span className="font-display text-lg font-semibold tracking-tight">
             Mock<span className="text-primary-light">view</span>
           </span>
-        </div>
+        </button>
         <button
           onClick={() => {
             dispatch({ type: "RESET" });
